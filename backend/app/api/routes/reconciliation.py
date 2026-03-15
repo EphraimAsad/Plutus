@@ -522,13 +522,14 @@ async def get_candidate_records(
 @router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_reconciliation_run(
     run_id: uuid.UUID,
-    current_user: AdminUser,
+    current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    """Delete a reconciliation run and all related data (admin only)."""
+    """Delete a reconciliation run and all related data."""
     from sqlalchemy import delete
-    from app.models.exception import Exception as ExceptionModel
+    from app.models.exception import Exception as ExceptionModel, ExceptionNote
     from app.models.anomaly import Anomaly
+    from app.models.ai_explanation import AIExplanation
 
     result = await db.execute(
         select(ReconciliationRun).where(ReconciliationRun.id == run_id)
@@ -566,7 +567,14 @@ async def delete_reconciliation_run(
         delete(UnmatchedRecord).where(UnmatchedRecord.reconciliation_run_id == run_id)
     )
 
-    # 5. Delete exceptions linked to this run
+    # 5. Delete exceptions linked to this run (first delete related AI explanations and notes)
+    exception_ids_result = await db.execute(
+        select(ExceptionModel.id).where(ExceptionModel.reconciliation_run_id == run_id)
+    )
+    exception_ids = [r[0] for r in exception_ids_result.fetchall()]
+    if exception_ids:
+        await db.execute(delete(AIExplanation).where(AIExplanation.exception_id.in_(exception_ids)))
+        await db.execute(delete(ExceptionNote).where(ExceptionNote.exception_id.in_(exception_ids)))
     await db.execute(
         delete(ExceptionModel).where(ExceptionModel.reconciliation_run_id == run_id)
     )

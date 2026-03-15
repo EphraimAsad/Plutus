@@ -324,14 +324,15 @@ async def get_job_records(
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ingestion_job(
     job_id: uuid.UUID,
-    current_user: AdminUser,
+    current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    """Delete an ingestion job and all related records (admin only)."""
+    """Delete an ingestion job and all related records."""
     from sqlalchemy import delete
     from app.models.ingestion import RawRecord
     from app.models.transaction import ValidationResult, CanonicalRecord
     from app.models.reconciliation import MatchCandidate, ReconciledMatchItem, UnmatchedRecord
+    from app.models.anomaly import Anomaly
 
     result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
     job = result.scalar_one_or_none()
@@ -373,6 +374,10 @@ async def delete_ingestion_job(
                 delete(UnmatchedRecord).where(
                     UnmatchedRecord.canonical_record_id.in_(canonical_ids)
                 )
+            )
+            # 3.5 Delete anomalies referencing these canonical records
+            await db.execute(
+                delete(Anomaly).where(Anomaly.canonical_record_id.in_(canonical_ids))
             )
 
         # 4. Delete canonical records linked to these raw records

@@ -306,10 +306,10 @@ async def activate_schema_mapping(
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_source(
     source_id: uuid.UUID,
-    current_user: AdminUser,
+    current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    """Delete a source system and all related data (admin only)."""
+    """Delete a source system and all related data."""
     from sqlalchemy import delete
     from app.models.transaction import CanonicalRecord, RawRecord, ValidationResult
     from app.models.ingestion import IngestionJob
@@ -320,8 +320,9 @@ async def delete_source(
         UnmatchedRecord,
         ReconciliationRun,
     )
-    from app.models.exception import Exception as ExceptionModel
+    from app.models.exception import Exception as ExceptionModel, ExceptionNote
     from app.models.anomaly import Anomaly
+    from app.models.ai_explanation import AIExplanation
 
     result = await db.execute(
         select(SourceSystem).where(SourceSystem.id == source_id)
@@ -381,6 +382,14 @@ async def delete_source(
 
     run_ids = list(set(run_ids_left + run_ids_right))
     if run_ids:
+        # Get exception IDs first, then delete related records
+        exception_ids_result = await db.execute(
+            select(ExceptionModel.id).where(ExceptionModel.reconciliation_run_id.in_(run_ids))
+        )
+        exception_ids = [r[0] for r in exception_ids_result.fetchall()]
+        if exception_ids:
+            await db.execute(delete(AIExplanation).where(AIExplanation.exception_id.in_(exception_ids)))
+            await db.execute(delete(ExceptionNote).where(ExceptionNote.exception_id.in_(exception_ids)))
         await db.execute(delete(ExceptionModel).where(ExceptionModel.reconciliation_run_id.in_(run_ids)))
         await db.execute(delete(Anomaly).where(Anomaly.reconciliation_run_id.in_(run_ids)))
 
