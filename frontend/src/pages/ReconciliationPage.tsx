@@ -16,6 +16,8 @@ export function ReconciliationPage() {
   const [leftSourceId, setLeftSourceId] = useState('')
   const [rightSourceId, setRightSourceId] = useState('')
   const [singleSourceId, setSingleSourceId] = useState('')
+  const [dateTolerance, setDateTolerance] = useState('3')
+  const [amountTolerance, setAmountTolerance] = useState('1')
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -30,7 +32,7 @@ export function ReconciliationPage() {
   })
 
   const createReconciliationMutation = useMutation({
-    mutationFn: (data: { name: string; left_source_id: string; right_source_id: string }) =>
+    mutationFn: (data: { name: string; left_source_id: string; right_source_id: string; parameters?: any }) =>
       reconciliationApi.createRun(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reconciliation-runs'] })
@@ -69,6 +71,8 @@ export function ReconciliationPage() {
     setLeftSourceId('')
     setRightSourceId('')
     setSingleSourceId('')
+    setDateTolerance('3')
+    setAmountTolerance('1')
   }
 
   const handleCreateRun = (e: React.FormEvent) => {
@@ -79,6 +83,10 @@ export function ReconciliationPage() {
           name: newRunName,
           left_source_id: leftSourceId,
           right_source_id: rightSourceId,
+          parameters: {
+            date_tolerance_days: parseInt(dateTolerance) || 3,
+            amount_tolerance_percent: parseFloat(amountTolerance) || 1,
+          },
         })
       }
     } else {
@@ -169,42 +177,77 @@ export function ReconciliationPage() {
               </div>
 
               {formType === 'reconcile' ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="leftSource">Left Source (Primary)</Label>
-                    <select
-                      id="leftSource"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={leftSourceId}
-                      onChange={(e) => setLeftSourceId(e.target.value)}
-                      required
-                    >
-                      <option value="">Select source...</option>
-                      {sources?.map((source: any) => (
-                        <option key={source.id} value={source.id}>
-                          {source.name}
-                        </option>
-                      ))}
-                    </select>
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="leftSource">Left Source (Primary)</Label>
+                      <select
+                        id="leftSource"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={leftSourceId}
+                        onChange={(e) => setLeftSourceId(e.target.value)}
+                        required
+                      >
+                        <option value="">Select source...</option>
+                        {sources?.map((source: any) => (
+                          <option key={source.id} value={source.id}>
+                            {source.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rightSource">Right Source (Secondary)</Label>
+                      <select
+                        id="rightSource"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={rightSourceId}
+                        onChange={(e) => setRightSourceId(e.target.value)}
+                        required
+                      >
+                        <option value="">Select source...</option>
+                        {sources?.filter((s: any) => s.id !== leftSourceId).map((source: any) => (
+                          <option key={source.id} value={source.id}>
+                            {source.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rightSource">Right Source (Secondary)</Label>
-                    <select
-                      id="rightSource"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={rightSourceId}
-                      onChange={(e) => setRightSourceId(e.target.value)}
-                      required
-                    >
-                      <option value="">Select source...</option>
-                      {sources?.filter((s: any) => s.id !== leftSourceId).map((source: any) => (
-                        <option key={source.id} value={source.id}>
-                          {source.name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="dateTolerance">Date Tolerance (days)</Label>
+                      <Input
+                        id="dateTolerance"
+                        type="number"
+                        min="0"
+                        max="30"
+                        value={dateTolerance}
+                        onChange={(e) => setDateTolerance(e.target.value)}
+                        placeholder="e.g., 3"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Allow dates to differ by ± this many days
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amountTolerance">Amount Tolerance (%)</Label>
+                      <Input
+                        id="amountTolerance"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={amountTolerance}
+                        onChange={(e) => setAmountTolerance(e.target.value)}
+                        placeholder="e.g., 1"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Allow amounts to differ by ± this percentage
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </>
               ) : (
                 <div className="space-y-2">
                   <Label htmlFor="singleSource">Source System</Label>
