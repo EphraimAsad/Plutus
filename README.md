@@ -269,6 +269,7 @@ OPENAI_API_KEY=your-api-key
 | `GET` | `/sources` | List sources |
 | `POST` | `/sources` | Create source (Admin) |
 | `POST` | `/sources/{id}/schema-mapping` | Add schema mapping |
+| `DELETE` | `/sources/{id}` | Delete source and related data (Admin) |
 
 ### Ingestion
 | Method | Endpoint | Description |
@@ -276,6 +277,7 @@ OPENAI_API_KEY=your-api-key
 | `POST` | `/ingestion/upload` | Upload file |
 | `GET` | `/ingestion/jobs` | List jobs |
 | `GET` | `/ingestion/jobs/{id}` | Job details |
+| `DELETE` | `/ingestion/jobs/{id}` | Delete job and related records (Admin) |
 
 ### Reconciliation
 | Method | Endpoint | Description |
@@ -283,6 +285,7 @@ OPENAI_API_KEY=your-api-key
 | `POST` | `/reconciliation/runs` | Start run |
 | `GET` | `/reconciliation/runs/{id}/summary` | Run summary |
 | `GET` | `/reconciliation/runs/{id}/matches` | Match candidates |
+| `DELETE` | `/reconciliation/runs/{id}` | Delete run and related data (Admin) |
 
 ### Exceptions
 | Method | Endpoint | Description |
