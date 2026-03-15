@@ -1,0 +1,192 @@
+================================================================================
+                    PLUTUS USER GUIDE - STEP BY STEP WORKFLOW
+================================================================================
+
+OVERVIEW
+--------
+Plutus is a financial reconciliation platform. The workflow is:
+
+    Sources -> Upload Files -> Reconcile -> Handle Exceptions -> Generate Reports
+
+
+================================================================================
+STEP 1: CREATE SOURCE SYSTEMS
+================================================================================
+
+Where: Sources page (/sources)
+
+Before uploading any data, you need to define your source systems
+(e.g., "Bank Statement", "Internal Ledger", "Payment Gateway").
+
+1. Click "Add Source"
+2. Fill in:
+   - Name: e.g., "Chase Bank Statements"
+   - Code: Short identifier, e.g., "CHASE"
+   - Description: What this source represents
+
+3. Add Schema Mapping - Tell Plutus how to read your files:
+   Map your CSV/Excel columns to standard fields:
+   - transaction_id   -> which column has the unique ID?
+   - amount           -> which column has the amount?
+   - transaction_date -> which column has the date?
+   - description      -> which column has the description?
+   - reference        -> any reference number column?
+
+
+================================================================================
+STEP 2: UPLOAD DATA FILES
+================================================================================
+
+Where: Ingestion page (/ingestion)
+
+1. Select the Source System you created
+2. Click "Upload File"
+3. Choose your CSV or Excel file
+4. The system will:
+   - Parse the file using your schema mapping
+   - Validate records
+   - Store as canonical records
+   - Show job progress in real-time
+
+Supported formats: CSV, XLSX, XLS
+
+
+================================================================================
+STEP 3: RUN RECONCILIATION
+================================================================================
+
+Where: Reconciliation page (/reconciliation)
+
+Once you have data from 2+ sources, you can reconcile them.
+
+1. Click "New Reconciliation Run"
+2. Select:
+   - Left Source: e.g., "Bank Statement"
+   - Right Source: e.g., "Internal Ledger"
+3. Configure matching parameters:
+   - Date Tolerance: +/- N days (e.g., +/- 3 days)
+   - Amount Tolerance: +/- N% (e.g., +/- 0.01%)
+   - Match Types: Exact, Tolerance, Fuzzy, or Scored
+4. Click "Start"
+
+The system will:
+- Compare all records from both sources
+- Find matches based on your criteria
+- Flag unmatched records
+- Create exceptions for review
+
+
+================================================================================
+STEP 4: REVIEW MATCH CANDIDATES
+================================================================================
+
+Where: Reconciliation page -> Run Details
+
+After a run completes:
+
+1. View Matched Records - Confirmed matches
+2. View Unmatched Records - Records with no match
+3. View Match Candidates - Potential matches needing review
+   - See confidence scores
+   - Compare side-by-side
+   - Approve or reject matches
+
+
+================================================================================
+STEP 5: HANDLE EXCEPTIONS
+================================================================================
+
+Where: Exceptions page (/exceptions)
+
+Exceptions are flagged issues requiring human review:
+- Unmatched records beyond tolerance
+- Amount mismatches
+- Duplicate transactions
+- Anomalies (unusual patterns)
+
+For each exception:
+1. Review the details and related records
+2. Add notes documenting your investigation
+3. Take action:
+   - Resolve: Mark as handled
+   - Dismiss: False positive
+   - Escalate: Needs manager review
+4. Optionally request AI Explanation for context
+
+
+================================================================================
+STEP 6: GENERATE REPORTS
+================================================================================
+
+Where: Reports page (/reports)
+
+Generate reports for audit and analysis:
+
+Report Types:
+- Reconciliation Summary: Overview of a recon run
+- Unmatched Items: List of unmatched records
+- Exception Backlog: Open exceptions by status
+- Anomaly Report: Detected anomalies
+- Ingestion Health: File upload statistics
+
+Export Formats: CSV, Excel, PDF, JSON
+
+1. Select report type
+2. Set filters (date range, source, status)
+3. Click "Generate"
+4. Download when ready
+
+
+================================================================================
+TYPICAL DAILY WORKFLOW
+================================================================================
+
+Morning:
+  1. Upload daily files (bank statements, ledger exports)
+  2. Check ingestion jobs completed successfully
+
+Mid-day:
+  3. Run reconciliation between sources
+  4. Review and resolve match candidates
+
+End of day:
+  5. Work through exception queue
+  6. Generate daily reconciliation report
+  7. Escalate unresolved items
+
+
+================================================================================
+QUICK REFERENCE
+================================================================================
+
+Task                  | Page           | Action
+----------------------|----------------|----------------------------------------
+Define data source    | Sources        | Add Source + Schema Mapping
+Upload file           | Ingestion      | Select source -> Upload
+Compare sources       | Reconciliation | New Run -> Select sources
+Review issues         | Exceptions     | Filter -> Review -> Resolve
+Export data           | Reports        | Select type -> Generate -> Download
+
+
+================================================================================
+ADMIN TASKS
+================================================================================
+
+Where: Admin page (/admin) - Admin role only
+
+- Create/manage users
+- View audit logs
+- System configuration
+
+
+================================================================================
+LOGIN CREDENTIALS
+================================================================================
+
+Default Admin:
+  Email:    admin@plutus-app.com
+  Password: admin123!
+
+(Change password after first login)
+
+================================================================================
