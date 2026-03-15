@@ -123,6 +123,10 @@ export const reconciliationApi = {
     const response = await api.get(`/reconciliation/runs/${runId}/matches`, { params })
     return response.data
   },
+  getConfirmedMatches: async (runId: string, params?: any) => {
+    const response = await api.get(`/reconciliation/runs/${runId}/confirmed-matches`, { params })
+    return response.data
+  },
   getUnmatched: async (runId: string, params?: any) => {
     const response = await api.get(`/reconciliation/runs/${runId}/unmatched`, { params })
     return response.data

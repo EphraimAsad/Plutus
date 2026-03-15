@@ -315,24 +315,88 @@ async def get_unmatched_records(
     offset: int = 0,
 ) -> list[UnmatchedRecordResponse]:
     """Get unmatched records for a reconciliation run."""
+    from app.models.transaction import CanonicalRecord
+
     result = await db.execute(
-        select(UnmatchedRecord)
+        select(UnmatchedRecord, CanonicalRecord)
+        .join(CanonicalRecord, UnmatchedRecord.canonical_record_id == CanonicalRecord.id)
         .where(UnmatchedRecord.reconciliation_run_id == run_id)
         .limit(limit)
         .offset(offset)
     )
-    records = result.scalars().all()
+    rows = result.all()
 
     return [
-        UnmatchedRecordResponse(
-            id=str(r.id),
-            reconciliation_run_id=str(r.reconciliation_run_id),
-            canonical_record_id=str(r.canonical_record_id),
-            reason_code=r.reason_code,
-            created_at=r.created_at.isoformat(),
-        )
-        for r in records
+        {
+            "id": str(ur.id),
+            "reconciliation_run_id": str(ur.reconciliation_run_id),
+            "canonical_record_id": str(ur.canonical_record_id),
+            "reason_code": ur.reason_code,
+            "created_at": ur.created_at.isoformat(),
+            "external_record_id": cr.external_record_id,
+            "amount": str(cr.amount) if cr.amount else None,
+            "record_date": cr.record_date.isoformat() if cr.record_date else None,
+            "reference_code": cr.reference_code,
+            "description": cr.description,
+        }
+        for ur, cr in rows
     ]
+
+
+@router.get("/runs/{run_id}/confirmed-matches")
+async def get_confirmed_matches(
+    run_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict]:
+    """Get confirmed reconciled matches with full record details."""
+    from app.models.transaction import CanonicalRecord
+
+    # Get reconciled matches with their items
+    result = await db.execute(
+        select(ReconciledMatch)
+        .where(ReconciledMatch.reconciliation_run_id == run_id)
+        .limit(limit)
+        .offset(offset)
+    )
+    matches = result.scalars().all()
+
+    response = []
+    for match in matches:
+        # Get left and right items
+        items_result = await db.execute(
+            select(ReconciledMatchItem, CanonicalRecord)
+            .join(CanonicalRecord, ReconciledMatchItem.canonical_record_id == CanonicalRecord.id)
+            .where(ReconciledMatchItem.reconciled_match_id == match.id)
+        )
+        items = items_result.all()
+
+        left_record = None
+        right_record = None
+        for item, record in items:
+            record_data = {
+                "external_record_id": record.external_record_id,
+                "amount": str(record.amount) if record.amount else None,
+                "record_date": record.record_date.isoformat() if record.record_date else None,
+                "reference_code": record.reference_code,
+                "description": record.description,
+            }
+            if item.side == "left":
+                left_record = record_data
+            else:
+                right_record = record_data
+
+        response.append({
+            "id": str(match.id),
+            "match_type": "exact",  # Confirmed matches are typically exact
+            "confidence_score": match.confidence_score,
+            "left_record": left_record,
+            "right_record": right_record,
+        })
+
+    return response
 
 
 @router.post("/candidates/{candidate_id}/resolve")
