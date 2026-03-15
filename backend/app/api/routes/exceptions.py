@@ -18,6 +18,7 @@ from app.schemas.exception import (
     ExceptionNoteResponse,
 )
 from app.api.deps import CurrentUser, AnalystUser
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -150,6 +151,10 @@ async def assign_exception(
 
     await db.flush()
 
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_exception_action(exception_id, current_user.id, "assign", {"assignee_id": str(assignee_id)})
+
     return {"message": "Exception assigned successfully"}
 
 
@@ -176,6 +181,10 @@ async def resolve_exception(
     exception.resolution_note = request.resolution_note
 
     await db.flush()
+
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_exception_action(exception_id, current_user.id, "resolve")
 
     return {"message": "Exception resolved successfully"}
 
@@ -204,6 +213,10 @@ async def dismiss_exception(
 
     await db.flush()
 
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_exception_action(exception_id, current_user.id, "dismiss")
+
     return {"message": "Exception dismissed"}
 
 
@@ -229,6 +242,10 @@ async def escalate_exception(
         exception.resolution_note = request.resolution_note
 
     await db.flush()
+
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_exception_action(exception_id, current_user.id, "escalate")
 
     return {"message": "Exception escalated"}
 

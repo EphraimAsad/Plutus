@@ -31,11 +31,11 @@ def generate_ai_explanation(
 
     try:
         from app.services.ai_explanation_service import AIExplanationService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def run():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = AIExplanationService(session)
 
                 entity_uuid = uuid.UUID(entity_id)
@@ -68,14 +68,14 @@ def generate_ai_explanation(
 
         # Try to mark as failed in DB
         try:
-            from app.core.database import async_session_maker
+            from app.core.database import get_worker_session
             from app.models.ai_explanation import AIExplanation, AIExplanationStatus, ParentType
             from sqlalchemy import select, and_
             from datetime import datetime, timezone
             import asyncio
 
             async def mark_failed():
-                async with async_session_maker() as session:
+                async with get_worker_session() as session:
                     # Find the pending explanation for this entity
                     type_map = {
                         "exception": ParentType.EXCEPTION,

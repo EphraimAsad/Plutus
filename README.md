@@ -22,11 +22,13 @@ Plutus is a full-stack internal operations platform for financial data reconcili
 - Background processing with real-time job tracking
 
 ### Reconciliation Engine
+- **Cross-Source Reconciliation**: Compare records between two different sources (e.g., Bank vs Ledger)
+- **Duplicate Detection**: Find potential duplicates within a single source
 - **Exact Matching**: ID + Amount + Date
 - **Tolerance Matching**: Configurable date (±N days) and amount (±N%) tolerances
 - **Fuzzy Matching**: Description and reference similarity using rapidfuzz
 - **Scored Matching**: Weighted combination with confidence scores
-- Cross-source and single-source (duplicate detection) modes
+- Automatic exception creation for candidates requiring review
 
 ### Exception Management
 - Priority-based exception queue
@@ -93,6 +95,27 @@ docker-compose exec backend python -m scripts.seed_demo_data
 | `admin@plutus-app.com` | `admin123!` |
 
 > **Note**: Change the admin password after first login.
+
+### Quick Test with Sample Data
+
+Sample CSV files are included in the `test/` directory for testing the reconciliation workflow:
+
+```bash
+# Navigate to Sources page and create two sources:
+# - Bank Statement (map: transaction_id, date, amount, description, reference)
+# - Internal Ledger (map: entry_id, posting_date, amount, memo, ref_number)
+
+# Upload test files via Ingestion page:
+# - test/bank_statement.csv (12 records)
+# - test/internal_ledger.csv (13 records)
+
+# Run reconciliation and verify:
+# - ~8 confirmed matches
+# - ~3 candidates needing review (creates exceptions)
+# - ~3 unmatched records
+```
+
+See `test/README.txt` for detailed step-by-step testing instructions.
 
 ---
 
@@ -299,6 +322,12 @@ OPENAI_API_KEY=your-api-key
 |--------|----------|-------------|
 | `POST` | `/reports` | Generate report |
 | `GET` | `/reports/{id}/download` | Download report |
+
+### Audit
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/audit` | List audit logs (Admin) |
+| `GET` | `/audit/{entity_type}/{entity_id}` | Entity audit history |
 
 Full API documentation available at `/docs` when running.
 

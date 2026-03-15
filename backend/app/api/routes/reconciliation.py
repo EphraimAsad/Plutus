@@ -14,6 +14,7 @@ from app.models.reconciliation import (
     MatchCandidate,
     MatchDecisionStatus,
     ReconciledMatch,
+    ReconciledMatchItem,
     UnmatchedRecord,
 )
 from app.schemas.reconciliation import (
@@ -27,6 +28,7 @@ from app.schemas.reconciliation import (
 from app.api.deps import CurrentUser, AnalystUser, AdminUser
 from app.models.source import SourceSystem
 from app.workers.reconciliation_tasks import run_reconciliation, run_duplicate_detection
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -73,6 +75,12 @@ async def create_reconciliation_run(
         triggered_by=current_user.id,
     )
     db.add(run)
+    await db.flush()
+
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_create("reconciliation_run", run.id, current_user.id, entity_name=run.name)
+
     await db.commit()
 
     # Trigger Celery task for reconciliation

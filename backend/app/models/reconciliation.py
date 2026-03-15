@@ -43,6 +43,7 @@ class MatchDecisionStatus(str, enum.Enum):
     REQUIRES_REVIEW = "requires_review"
     MANUALLY_MATCHED = "manually_matched"
     MANUALLY_REJECTED = "manually_rejected"
+    DUPLICATE_CANDIDATE = "duplicate_candidate"
 
 
 class ResolutionType(str, enum.Enum):

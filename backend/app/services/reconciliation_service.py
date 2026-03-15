@@ -390,6 +390,7 @@ class ReconciliationService:
             decision_status=decision_status,
         )
         self.db.add(candidate)
+        await self.db.flush()
 
         return candidate
 
@@ -438,7 +439,7 @@ class ReconciliationService:
         candidate.decision_status = decision
 
         # If confirmed as match, create reconciled match
-        if decision == MatchDecisionStatus.MATCHED:
+        if decision == MatchDecisionStatus.MANUALLY_MATCHED:
             left_record = await self.db.get(CanonicalRecord, candidate.left_record_id)
             right_record = await self.db.get(CanonicalRecord, candidate.right_record_id)
 

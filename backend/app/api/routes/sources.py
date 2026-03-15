@@ -18,6 +18,7 @@ from app.schemas.source import (
     SchemaMappingResponse,
 )
 from app.api.deps import CurrentUser, AdminUser
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -86,6 +87,10 @@ async def create_source(
     )
     db.add(source)
     await db.flush()
+
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_create("source", source.id, current_user.id, entity_name=source.name)
 
     return SourceSystemResponse(
         id=str(source.id),

@@ -85,13 +85,19 @@ class MatchCandidateUpdate(BaseModel):
 
 
 class UnmatchedRecordResponse(BaseModel):
-    """Unmatched record response schema."""
+    """Unmatched record response schema with canonical record details."""
 
     id: str
     reconciliation_run_id: str
     canonical_record_id: str
     reason_code: str
     created_at: str
+    # Canonical record fields
+    external_record_id: str | None = None
+    amount: str | None = None
+    record_date: str | None = None
+    reference_code: str | None = None
+    description: str | None = None
 
     class Config:
         from_attributes = True

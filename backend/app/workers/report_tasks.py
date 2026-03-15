@@ -27,7 +27,7 @@ def generate_report_task(self, report_id: str, file_format: str = "csv") -> dict
     try:
         from app.services.reporting_service import ReportingService
         from app.models.report import ReportFormat
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         # Parse format
@@ -37,7 +37,7 @@ def generate_report_task(self, report_id: str, file_format: str = "csv") -> dict
             format_enum = ReportFormat.CSV
 
         async def run():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = ReportingService(session)
                 result = await service.generate_report(
                     uuid.UUID(report_id),
@@ -58,13 +58,13 @@ def generate_report_task(self, report_id: str, file_format: str = "csv") -> dict
         logger.error(f"Report generation {report_id} failed: {exc}")
         # Update status to failed
         try:
-            from app.core.database import async_session_maker
+            from app.core.database import get_worker_session
             from app.models.report import Report, ReportStatus
             from sqlalchemy import select
             import asyncio
 
             async def mark_failed():
-                async with async_session_maker() as session:
+                async with get_worker_session() as session:
                     result = await session.execute(
                         select(Report).where(Report.id == uuid.UUID(report_id))
                     )
@@ -92,7 +92,7 @@ def regenerate_report_task(report_id: str, new_format: str) -> dict:
     try:
         from app.services.export_service import ExportService
         from app.models.report import Report, ReportFormat, ReportSnapshot
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         from sqlalchemy import select
         import asyncio
 
@@ -102,7 +102,7 @@ def regenerate_report_task(report_id: str, new_format: str) -> dict:
             return {"status": "failed", "error": f"Invalid format: {new_format}"}
 
         async def run():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 # Get report and snapshot
                 result = await session.execute(
                     select(Report).where(Report.id == uuid.UUID(report_id))
@@ -151,7 +151,7 @@ def cleanup_old_reports(days_old: int = 90) -> dict:
     logger.info(f"Cleaning up reports older than {days_old} days")
 
     try:
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         from app.models.report import Report, ReportStatus
         from app.core.config import settings
         from sqlalchemy import select, and_
@@ -163,7 +163,7 @@ def cleanup_old_reports(days_old: int = 90) -> dict:
 
         async def run():
             nonlocal deleted_files, deleted_records
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 # Find old completed reports
                 result = await session.execute(
                     select(Report).where(
