@@ -365,6 +365,11 @@ async def delete_source(
             )
         )
 
+        # 3.5 Delete anomalies referencing these canonical records
+        await db.execute(
+            delete(Anomaly).where(Anomaly.canonical_record_id.in_(canonical_ids))
+        )
+
     # 4. Find reconciliation runs that involve this source and delete their exceptions/anomalies
     runs_result = await db.execute(
         select(ReconciliationRun.id).where(
