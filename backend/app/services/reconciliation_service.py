@@ -65,7 +65,7 @@ class ReconciliationService:
             raise ValueError(f"Reconciliation run not found: {run_id}")
 
         # Update status to processing
-        run.status = ReconciliationStatus.PROCESSING
+        run.status = ReconciliationStatus.RUNNING
         run.started_at = datetime.now(timezone.utc)
         await self.db.flush()
 
@@ -217,7 +217,7 @@ class ReconciliationService:
         if not run:
             raise ValueError(f"Reconciliation run not found: {run_id}")
 
-        run.status = ReconciliationStatus.PROCESSING
+        run.status = ReconciliationStatus.RUNNING
         run.started_at = datetime.now(timezone.utc)
         await self.db.flush()
 

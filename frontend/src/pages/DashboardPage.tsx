@@ -400,7 +400,7 @@ export function DashboardPage() {
                 <div className="flex items-center gap-4">
                   <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(run.status)}`}>
                     {run.status === 'completed' && <CheckCircle className="h-3 w-3" />}
-                    {run.status === 'processing' && <RefreshCw className="h-3 w-3 animate-spin" />}
+                    {run.status === 'running' && <RefreshCw className="h-3 w-3 animate-spin" />}
                     {run.status}
                   </span>
                   <div className="text-right text-sm">
