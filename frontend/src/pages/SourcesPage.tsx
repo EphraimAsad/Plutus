@@ -7,11 +7,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Database, Settings } from 'lucide-react'
+import { Plus, Database, Settings, X } from 'lucide-react'
 
 export function SourcesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newSource, setNewSource] = useState({ name: '', source_type: 'csv', description: '' })
+  const [selectedSource, setSelectedSource] = useState<any>(null)
+  const [showMappingForm, setShowMappingForm] = useState(false)
+  const [mapping, setMapping] = useState({
+    transaction_id: '',
+    amount: '',
+    transaction_date: '',
+    description: '',
+    reference: '',
+  })
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -37,9 +46,47 @@ export function SourcesPage() {
     },
   })
 
+  const mappingMutation = useMutation({
+    mutationFn: (data: { sourceId: string; mapping: any }) =>
+      sourcesApi.createSchemaMapping(data.sourceId, {
+        mapping_json: {
+          fields: data.mapping,
+          date_format: '%Y-%m-%d',
+          decimal_separator: '.',
+          skip_rows: 0,
+        },
+        is_active: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] })
+      setShowMappingForm(false)
+      setSelectedSource(null)
+      setMapping({ transaction_id: '', amount: '', transaction_date: '', description: '', reference: '' })
+      toast({ title: 'Schema mapping saved successfully' })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to save schema mapping',
+        description: error.response?.data?.detail || 'An error occurred',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const handleCreateSource = (e: React.FormEvent) => {
     e.preventDefault()
     createMutation.mutate(newSource)
+  }
+
+  const handleSaveMapping = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedSource) return
+    mappingMutation.mutate({ sourceId: selectedSource.id, mapping })
+  }
+
+  const openMappingForm = (source: any) => {
+    setSelectedSource(source)
+    setShowMappingForm(true)
   }
 
   if (isLoading) {
@@ -115,6 +162,83 @@ export function SourcesPage() {
         </Card>
       )}
 
+      {/* Schema Mapping Form */}
+      {showMappingForm && selectedSource && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Configure Schema Mapping: {selectedSource.name}</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => { setShowMappingForm(false); setSelectedSource(null); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSaveMapping} className="space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Enter the column names from your CSV/Excel file that correspond to each field.
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="map_transaction_id">Transaction ID Column</Label>
+                  <Input
+                    id="map_transaction_id"
+                    value={mapping.transaction_id}
+                    onChange={(e) => setMapping({ ...mapping, transaction_id: e.target.value })}
+                    placeholder="e.g., transaction_id"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map_amount">Amount Column</Label>
+                  <Input
+                    id="map_amount"
+                    value={mapping.amount}
+                    onChange={(e) => setMapping({ ...mapping, amount: e.target.value })}
+                    placeholder="e.g., amount"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map_date">Date Column</Label>
+                  <Input
+                    id="map_date"
+                    value={mapping.transaction_date}
+                    onChange={(e) => setMapping({ ...mapping, transaction_date: e.target.value })}
+                    placeholder="e.g., date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map_description">Description Column</Label>
+                  <Input
+                    id="map_description"
+                    value={mapping.description}
+                    onChange={(e) => setMapping({ ...mapping, description: e.target.value })}
+                    placeholder="e.g., description"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="map_reference">Reference Column</Label>
+                  <Input
+                    id="map_reference"
+                    value={mapping.reference}
+                    onChange={(e) => setMapping({ ...mapping, reference: e.target.value })}
+                    placeholder="e.g., reference"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={mappingMutation.isPending}>
+                  {mappingMutation.isPending ? 'Saving...' : 'Save Mapping'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setShowMappingForm(false); setSelectedSource(null); }}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Sources List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {sources?.map((source: any) => (
@@ -146,7 +270,7 @@ export function SourcesPage() {
                 </span>
               </div>
               <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => openMappingForm(source)}>
                   <Settings className="mr-1 h-3 w-3" />
                   Configure
                 </Button>

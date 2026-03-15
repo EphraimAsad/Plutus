@@ -21,16 +21,18 @@ Before uploading any data, you need to define your source systems
 1. Click "Add Source"
 2. Fill in:
    - Name: e.g., "Chase Bank Statements"
-   - Code: Short identifier, e.g., "CHASE"
+   - Type: CSV or Excel
    - Description: What this source represents
+3. Click "Create Source"
 
-3. Add Schema Mapping - Tell Plutus how to read your files:
-   Map your CSV/Excel columns to standard fields:
-   - transaction_id   -> which column has the unique ID?
-   - amount           -> which column has the amount?
-   - transaction_date -> which column has the date?
-   - description      -> which column has the description?
-   - reference        -> any reference number column?
+4. Click "Configure" on the new source card
+5. Map your CSV/Excel columns to standard fields:
+   - Transaction ID Column -> which column has the unique ID?
+   - Amount Column         -> which column has the amount?
+   - Date Column           -> which column has the date?
+   - Description Column    -> which column has the description?
+   - Reference Column      -> any reference number column?
+6. Click "Save Mapping"
 
 
 ================================================================================
