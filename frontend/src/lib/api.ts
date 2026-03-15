@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 200000, // 200 seconds
   headers: {
     'Content-Type': 'application/json',
   },
@@ -206,6 +207,9 @@ export const reportsApi = {
   download: async (id: string) => {
     const response = await api.get(`/reports/${id}/download`, { responseType: 'blob' })
     return response.data
+  },
+  delete: async (id: string) => {
+    await api.delete(`/reports/${id}`)
   },
 }
 

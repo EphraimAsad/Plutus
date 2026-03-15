@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.report import Report, ReportFormat, ReportStatus, ReportType
 from app.schemas.report import ReportCreate, ReportResponse, ReportListResponse
-from app.api.deps import CurrentUser, ManagerUser
+from app.api.deps import CurrentUser, ManagerUser, AdminUser
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -283,3 +284,44 @@ async def get_report_types(
             for f in ReportFormat
         ],
     }
+
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: uuid.UUID,
+    current_user: AdminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a report and its associated files (admin only)."""
+    from sqlalchemy import delete
+    from app.models.report import ReportSnapshot
+    from app.models.ai_explanation import AIExplanation
+    from pathlib import Path
+
+    result = await db.execute(select(Report).where(Report.id == report_id))
+    report = result.scalar_one_or_none()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found",
+        )
+
+    # Delete associated file if exists
+    if report.file_path:
+        file_path = Path(report.file_path)
+        if file_path.exists():
+            file_path.unlink()
+
+    # Delete related records
+    await db.execute(delete(ReportSnapshot).where(ReportSnapshot.report_id == report_id))
+    await db.execute(delete(AIExplanation).where(AIExplanation.report_id == report_id))
+
+    # Delete the report
+    await db.delete(report)
+
+    # Audit log
+    audit = AuditService(db)
+    await audit.log_delete("report", report_id, current_user.id, entity_name=report.title)
+
+    await db.commit()

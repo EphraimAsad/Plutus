@@ -1,6 +1,6 @@
 # Plutus
 
-[![CI](https://github.com/yourusername/plutus/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/plutus/actions/workflows/ci.yml)
+[![CI](https://github.com/EphraimAsad/Plutus/actions/workflows/ci.yml/badge.svg)](https://github.com/EphraimAsad/Plutus/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![React 18](https://img.shields.io/badge/react-18-61dafb.svg)](https://reactjs.org/)
@@ -9,7 +9,7 @@
 
 **Production-Grade Financial Reconciliation Platform**
 
-Plutus is a full-stack internal operations platform for financial data reconciliation, exception management, and operational reporting. It enables operations teams to ingest, validate, match, and reconcile records from multiple source systems with powerful matching algorithms and AI-powered explanations.
+Plutus is an enterprise-grade internal operations platform designed for financial data reconciliation, exception management, and operational reporting. It enables operations teams to ingest, validate, match, and reconcile records from multiple source systems using powerful matching algorithms and AI-powered explanations.
 
 ---
 
@@ -38,7 +38,7 @@ Plutus is a full-stack internal operations platform for financial data reconcili
 
 ### Reporting & Export
 - **Report Types**: Reconciliation summary, unmatched items, exception backlog, anomaly report, ingestion health
-- **Export Formats**: CSV, Excel (XLSX), PDF, JSON
+- **Export Formats**: CSV, Excel (XLSX), JSON
 - Background generation with progress tracking
 
 ### AI Explanations (Optional)
@@ -61,8 +61,8 @@ Plutus is a full-stack internal operations platform for financial data reconcili
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/plutus.git
-cd plutus
+git clone https://github.com/EphraimAsad/Plutus.git
+cd Plutus
 
 # Create environment file
 cp .env.example .env

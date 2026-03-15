@@ -79,7 +79,7 @@ class OpenAIProvider(BaseAIProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=200.0) as client:
                 response = await client.post(
                     OPENAI_API_URL,
                     json=payload,

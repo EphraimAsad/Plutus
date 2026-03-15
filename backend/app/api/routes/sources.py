@@ -318,7 +318,10 @@ async def delete_source(
         ReconciledMatch,
         ReconciledMatchItem,
         UnmatchedRecord,
+        ReconciliationRun,
     )
+    from app.models.exception import Exception as ExceptionModel
+    from app.models.anomaly import Anomaly
 
     result = await db.execute(
         select(SourceSystem).where(SourceSystem.id == source_id)
@@ -361,10 +364,30 @@ async def delete_source(
             )
         )
 
-    # 4. Delete canonical records
+    # 4. Find reconciliation runs that involve this source and delete their exceptions/anomalies
+    runs_result = await db.execute(
+        select(ReconciliationRun.id).where(
+            ReconciliationRun.parameters_json["left_source_id"].astext == str(source_id)
+        )
+    )
+    run_ids_left = [r[0] for r in runs_result.fetchall()]
+
+    runs_result2 = await db.execute(
+        select(ReconciliationRun.id).where(
+            ReconciliationRun.parameters_json["right_source_id"].astext == str(source_id)
+        )
+    )
+    run_ids_right = [r[0] for r in runs_result2.fetchall()]
+
+    run_ids = list(set(run_ids_left + run_ids_right))
+    if run_ids:
+        await db.execute(delete(ExceptionModel).where(ExceptionModel.reconciliation_run_id.in_(run_ids)))
+        await db.execute(delete(Anomaly).where(Anomaly.reconciliation_run_id.in_(run_ids)))
+
+    # 5. Delete canonical records
     await db.execute(delete(CanonicalRecord).where(CanonicalRecord.source_system_id == source_id))
 
-    # 5. Delete raw records and their validation results
+    # 6. Delete raw records and their validation results
     raw_record_ids = await db.execute(
         select(RawRecord.id).where(RawRecord.source_system_id == source_id)
     )
@@ -373,12 +396,12 @@ async def delete_source(
         await db.execute(delete(ValidationResult).where(ValidationResult.raw_record_id.in_(raw_ids)))
         await db.execute(delete(RawRecord).where(RawRecord.source_system_id == source_id))
 
-    # 6. Delete ingestion jobs
+    # 7. Delete ingestion jobs
     await db.execute(delete(IngestionJob).where(IngestionJob.source_system_id == source_id))
 
-    # 7. Delete schema mappings
+    # 8. Delete schema mappings
     await db.execute(delete(SourceSchemaMapping).where(SourceSchemaMapping.source_system_id == source_id))
 
-    # 8. Finally delete the source
+    # 9. Finally delete the source
     await db.delete(source)
-    await db.flush()
+    await db.commit()

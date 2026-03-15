@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { exceptionsApi, reconciliationApi } from '@/lib/api'
+import { exceptionsApi, reconciliationApi, aiApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,9 @@ import {
   MessageSquare,
   UserPlus,
   ChevronRight,
+  ChevronDown,
+  History,
+  Sparkles,
 } from 'lucide-react'
 
 interface Exception {
@@ -41,6 +44,8 @@ export function ExceptionsPage() {
   const [selectedException, setSelectedException] = useState<Exception | null>(null)
   const [resolutionNote, setResolutionNote] = useState('')
   const [showDetailPanel, setShowDetailPanel] = useState(false)
+  const [showPreviousExceptions, setShowPreviousExceptions] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null)
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -110,8 +115,57 @@ export function ExceptionsPage() {
     },
   })
 
+  const aiExplanationMutation = useMutation({
+    mutationFn: (exceptionId: string) => aiApi.requestExceptionExplanation(exceptionId),
+    onSuccess: async (data) => {
+      // API returns immediately with status: "pending"
+      // We need to poll until the explanation is ready
+      const explanationId = data.id
+      setAiExplanation('Generating AI explanation...')
+
+      const pollForExplanation = async (attempts = 0) => {
+        if (attempts >= 30) {
+          setAiExplanation('Explanation generation timed out. Please try again.')
+          return
+        }
+
+        try {
+          const result = await aiApi.get(explanationId)
+          if (result.status === 'completed' && result.output_text) {
+            setAiExplanation(result.output_text)
+            toast({ title: 'AI Explanation ready' })
+          } else if (result.status === 'failed') {
+            setAiExplanation('Failed to generate explanation: ' + (result.error_message || 'Unknown error'))
+          } else {
+            // Still pending/processing, poll again
+            setTimeout(() => pollForExplanation(attempts + 1), 1000)
+          }
+        } catch {
+          setAiExplanation('Failed to fetch explanation')
+        }
+      }
+
+      pollForExplanation()
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to get AI explanation',
+        description: error.response?.data?.detail || 'AI service unavailable',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const exceptions = exceptionsData?.items || []
   const total = exceptionsData?.total || 0
+
+  // Split into active and previous exceptions
+  const activeExceptions = exceptions.filter((e: Exception) =>
+    !['resolved', 'dismissed'].includes(e.status)
+  )
+  const previousExceptions = exceptions.filter((e: Exception) =>
+    ['resolved', 'dismissed'].includes(e.status)
+  )
 
   // Summary counts
   const openCount = exceptions.filter((e: Exception) => e.status === 'open' || e.status === 'in_review').length
@@ -122,12 +176,14 @@ export function ExceptionsPage() {
     setSelectedException(exception)
     setShowDetailPanel(true)
     setResolutionNote('')
+    setAiExplanation(null)
   }
 
   const handleClosePanel = () => {
     setShowDetailPanel(false)
     setSelectedException(null)
     setResolutionNote('')
+    setAiExplanation(null)
   }
 
   const handleResolve = () => {
@@ -251,15 +307,15 @@ export function ExceptionsPage() {
           </CardContent>
         </Card>
 
-        {/* Exceptions Table */}
+        {/* Active Exceptions Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Exceptions ({exceptions.length})</CardTitle>
+            <CardTitle>Active Exceptions ({activeExceptions.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8">Loading...</div>
-            ) : exceptions.length > 0 ? (
+            ) : activeExceptions.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -273,7 +329,7 @@ export function ExceptionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {exceptions.map((exception: Exception) => (
+                    {activeExceptions.map((exception: Exception) => (
                       <tr
                         key={exception.id}
                         className={`border-b hover:bg-muted/50 cursor-pointer ${
@@ -323,14 +379,94 @@ export function ExceptionsPage() {
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                <h3 className="text-lg font-medium">No exceptions found</h3>
+                <h3 className="text-lg font-medium">No active exceptions</h3>
                 <p className="text-muted-foreground">
-                  All clear! No exceptions match your filters.
+                  All clear! No exceptions require attention.
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Previous Exceptions (Collapsed) */}
+        {previousExceptions.length > 0 && (
+          <Card>
+            <div
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+              onClick={() => setShowPreviousExceptions(!showPreviousExceptions)}
+            >
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Previous Exceptions ({previousExceptions.length})
+              </h3>
+              <ChevronDown className={`h-5 w-5 transition-transform ${showPreviousExceptions ? 'rotate-180' : ''}`} />
+            </div>
+            {showPreviousExceptions && (
+              <CardContent className="pt-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Severity</th>
+                        <th className="text-left py-3 px-4 font-medium">Title</th>
+                        <th className="text-left py-3 px-4 font-medium">Type</th>
+                        <th className="text-left py-3 px-4 font-medium">Status</th>
+                        <th className="text-left py-3 px-4 font-medium">Resolved</th>
+                        <th className="text-left py-3 px-4 font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previousExceptions.map((exception: Exception) => (
+                        <tr
+                          key={exception.id}
+                          className={`border-b hover:bg-muted/50 cursor-pointer ${
+                            selectedException?.id === exception.id ? 'bg-muted/50' : ''
+                          }`}
+                          onClick={() => handleViewException(exception)}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {getSeverityIcon(exception.severity)}
+                              <span className={`rounded-full px-2 py-1 text-xs ${getSeverityColor(exception.severity)}`}>
+                                {exception.severity}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="max-w-md">
+                              <p className="font-medium truncate">{exception.title}</p>
+                              {exception.description && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {exception.description}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm capitalize">
+                              {exception.exception_type.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`rounded-full px-2 py-1 text-xs ${getStatusColor(exception.status)}`}>
+                              {exception.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground text-sm">
+                            {exception.resolved_at ? formatDateTime(exception.resolved_at) : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* Detail Panel */}
@@ -365,6 +501,29 @@ export function ExceptionsPage() {
               <p className="text-xs text-muted-foreground">
                 Created: {formatDateTime(selectedException.created_at)}
               </p>
+            </div>
+
+            {/* AI Explanation */}
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => aiExplanationMutation.mutate(selectedException.id)}
+                disabled={aiExplanationMutation.isPending}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {aiExplanationMutation.isPending ? 'Getting AI Explanation...' : 'Get AI Explanation'}
+              </Button>
+              {aiExplanation && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    AI Analysis
+                  </p>
+                  <p className="text-sm">{aiExplanation}</p>
+                </div>
+              )}
             </div>
 
             {/* Related Records Comparison */}

@@ -331,6 +331,7 @@ async def delete_ingestion_job(
     from sqlalchemy import delete
     from app.models.ingestion import RawRecord
     from app.models.transaction import ValidationResult, CanonicalRecord
+    from app.models.reconciliation import MatchCandidate, ReconciledMatchItem, UnmatchedRecord
 
     result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
     job = result.scalar_one_or_none()
@@ -349,13 +350,38 @@ async def delete_ingestion_job(
     raw_ids = [r[0] for r in raw_record_ids.fetchall()]
 
     if raw_ids:
-        # 2. Delete canonical records linked to these raw records
+        # 2. Get canonical record IDs linked to these raw records
+        canonical_ids_result = await db.execute(
+            select(CanonicalRecord.id).where(CanonicalRecord.raw_record_id.in_(raw_ids))
+        )
+        canonical_ids = [r[0] for r in canonical_ids_result.fetchall()]
+
+        if canonical_ids:
+            # 3. Delete reconciliation-related records referencing these canonical records
+            await db.execute(
+                delete(MatchCandidate).where(
+                    (MatchCandidate.left_record_id.in_(canonical_ids)) |
+                    (MatchCandidate.right_record_id.in_(canonical_ids))
+                )
+            )
+            await db.execute(
+                delete(ReconciledMatchItem).where(
+                    ReconciledMatchItem.canonical_record_id.in_(canonical_ids)
+                )
+            )
+            await db.execute(
+                delete(UnmatchedRecord).where(
+                    UnmatchedRecord.canonical_record_id.in_(canonical_ids)
+                )
+            )
+
+        # 4. Delete canonical records linked to these raw records
         await db.execute(delete(CanonicalRecord).where(CanonicalRecord.raw_record_id.in_(raw_ids)))
-        # 3. Delete validation results for these raw records
+        # 5. Delete validation results for these raw records
         await db.execute(delete(ValidationResult).where(ValidationResult.raw_record_id.in_(raw_ids)))
-        # 4. Delete the raw records themselves
+        # 6. Delete the raw records themselves
         await db.execute(delete(RawRecord).where(RawRecord.ingestion_job_id == job_id))
 
-    # 5. Finally delete the job
+    # 7. Finally delete the job
     await db.delete(job)
-    await db.flush()
+    await db.commit()

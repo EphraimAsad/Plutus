@@ -526,6 +526,10 @@ async def delete_reconciliation_run(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Delete a reconciliation run and all related data (admin only)."""
+    from sqlalchemy import delete
+    from app.models.exception import Exception as ExceptionModel
+    from app.models.anomaly import Anomaly
+
     result = await db.execute(
         select(ReconciliationRun).where(ReconciliationRun.id == run_id)
     )
@@ -537,5 +541,41 @@ async def delete_reconciliation_run(
             detail="Reconciliation run not found",
         )
 
+    # Delete related records in order (respecting foreign keys)
+    # 1. Delete match candidates
+    await db.execute(
+        delete(MatchCandidate).where(MatchCandidate.reconciliation_run_id == run_id)
+    )
+
+    # 2. Delete reconciled match items (must delete before reconciled matches)
+    await db.execute(
+        delete(ReconciledMatchItem).where(
+            ReconciledMatchItem.reconciled_match_id.in_(
+                select(ReconciledMatch.id).where(ReconciledMatch.reconciliation_run_id == run_id)
+            )
+        )
+    )
+
+    # 3. Delete reconciled matches
+    await db.execute(
+        delete(ReconciledMatch).where(ReconciledMatch.reconciliation_run_id == run_id)
+    )
+
+    # 4. Delete unmatched records
+    await db.execute(
+        delete(UnmatchedRecord).where(UnmatchedRecord.reconciliation_run_id == run_id)
+    )
+
+    # 5. Delete exceptions linked to this run
+    await db.execute(
+        delete(ExceptionModel).where(ExceptionModel.reconciliation_run_id == run_id)
+    )
+
+    # 6. Delete anomalies linked to this run
+    await db.execute(
+        delete(Anomaly).where(Anomaly.reconciliation_run_id == run_id)
+    )
+
+    # 7. Finally delete the run
     await db.delete(run)
-    await db.flush()
+    await db.commit()
