@@ -328,6 +328,10 @@ async def delete_ingestion_job(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Delete an ingestion job and all related records (admin only)."""
+    from sqlalchemy import delete
+    from app.models.ingestion import RawRecord
+    from app.models.transaction import ValidationResult, CanonicalRecord
+
     result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
     job = result.scalar_one_or_none()
 
@@ -337,5 +341,21 @@ async def delete_ingestion_job(
             detail="Ingestion job not found",
         )
 
+    # Delete related records in order (respecting foreign keys)
+    # 1. Get raw record IDs for this job
+    raw_record_ids = await db.execute(
+        select(RawRecord.id).where(RawRecord.ingestion_job_id == job_id)
+    )
+    raw_ids = [r[0] for r in raw_record_ids.fetchall()]
+
+    if raw_ids:
+        # 2. Delete canonical records linked to these raw records
+        await db.execute(delete(CanonicalRecord).where(CanonicalRecord.raw_record_id.in_(raw_ids)))
+        # 3. Delete validation results for these raw records
+        await db.execute(delete(ValidationResult).where(ValidationResult.raw_record_id.in_(raw_ids)))
+        # 4. Delete the raw records themselves
+        await db.execute(delete(RawRecord).where(RawRecord.ingestion_job_id == job_id))
+
+    # 5. Finally delete the job
     await db.delete(job)
     await db.flush()

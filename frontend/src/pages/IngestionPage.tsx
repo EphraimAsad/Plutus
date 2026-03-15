@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDateTime, getStatusColor, formatNumber } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Upload, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Upload, FileText, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
 
 export function IngestionPage() {
   const [selectedSource, setSelectedSource] = useState<string>('')
@@ -43,9 +43,30 @@ export function IngestionPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (jobId: string) => ingestionApi.deleteJob(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ingestion-jobs'] })
+      toast({ title: 'Job deleted successfully' })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to delete job',
+        description: error.response?.data?.detail || 'An error occurred',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const handleUpload = () => {
     if (selectedSource && selectedFile) {
       uploadMutation.mutate({ sourceId: selectedSource, file: selectedFile })
+    }
+  }
+
+  const handleDeleteJob = (job: any) => {
+    if (confirm(`Delete job "${job.file_name}"? This will also delete all related records.`)) {
+      deleteMutation.mutate(job.id)
     }
   }
 
@@ -134,6 +155,7 @@ export function IngestionPage() {
                     <th className="text-right py-3 px-4 font-medium">Valid</th>
                     <th className="text-right py-3 px-4 font-medium">Invalid</th>
                     <th className="text-left py-3 px-4 font-medium">Created</th>
+                    <th className="text-left py-3 px-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,6 +184,11 @@ export function IngestionPage() {
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
                         {formatDateTime(job.created_at)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteJob(job)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
