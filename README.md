@@ -224,17 +224,16 @@ docker-compose exec backend python -m scripts.seed_demo_data
 
 ### CI/CD
 
-The project includes GitHub Actions workflows for continuous integration:
+GitHub Actions workflow for continuous integration:
 
 **Workflow:** `.github/workflows/ci.yml`
 
 | Job | Description |
 |-----|-------------|
-| **Backend CI** | Ruff linting, MyPy type checking, pytest with PostgreSQL/Redis |
-| **Frontend CI** | ESLint, TypeScript checking, Vitest tests, production build |
-| **Docker Build** | Validates all Dockerfiles build successfully |
+| **Backend** | Install dependencies, run database migrations against PostgreSQL |
+| **Frontend** | Install dependencies, production build with Vite |
 
-**Triggers:** Push to `main`, pull requests, manual dispatch
+**Triggers:** Push to `main`, pull requests
 
 ---
 
@@ -248,7 +247,7 @@ The project includes GitHub Actions workflows for continuous integration:
 | `DATABASE_URL` | PostgreSQL connection | `postgresql+asyncpg://...` |
 | `REDIS_URL` | Redis connection | `redis://redis:6379/0` |
 | `AI_PROVIDER` | AI provider (`ollama`/`anthropic`/`openai`) | `ollama` |
-| `OLLAMA_MODEL` | Ollama model name | `gemma:7b` |
+| `OLLAMA_MODEL` | Ollama model name | `llama3.2:3b` |
 | `DEBUG` | Enable debug mode | `true` |
 
 See `.env.example` for full configuration options.
@@ -261,7 +260,7 @@ Plutus supports AI-powered explanations for exceptions and anomalies. By default
 ```bash
 # Install Ollama from https://ollama.ai
 # Pull the default model
-ollama pull gemma:7b
+ollama pull llama3.2:3b
 
 # Ollama runs on http://localhost:11434 by default
 # The backend connects via host.docker.internal
@@ -292,7 +291,7 @@ OPENAI_API_KEY=your-api-key
 | `GET` | `/sources` | List sources |
 | `POST` | `/sources` | Create source (Admin) |
 | `POST` | `/sources/{id}/schema-mapping` | Add schema mapping |
-| `DELETE` | `/sources/{id}` | Delete source and related data (Admin) |
+| `DELETE` | `/sources/{id}` | Delete source and related data |
 
 ### Ingestion
 | Method | Endpoint | Description |
@@ -300,7 +299,7 @@ OPENAI_API_KEY=your-api-key
 | `POST` | `/ingestion/upload` | Upload file |
 | `GET` | `/ingestion/jobs` | List jobs |
 | `GET` | `/ingestion/jobs/{id}` | Job details |
-| `DELETE` | `/ingestion/jobs/{id}` | Delete job and related records (Admin) |
+| `DELETE` | `/ingestion/jobs/{id}` | Delete job and related records |
 
 ### Reconciliation
 | Method | Endpoint | Description |
@@ -308,7 +307,7 @@ OPENAI_API_KEY=your-api-key
 | `POST` | `/reconciliation/runs` | Start run |
 | `GET` | `/reconciliation/runs/{id}/summary` | Run summary |
 | `GET` | `/reconciliation/runs/{id}/matches` | Match candidates |
-| `DELETE` | `/reconciliation/runs/{id}` | Delete run and related data (Admin) |
+| `DELETE` | `/reconciliation/runs/{id}` | Delete run and related data |
 
 ### Exceptions
 | Method | Endpoint | Description |
