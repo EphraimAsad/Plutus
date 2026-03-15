@@ -308,6 +308,12 @@ async def delete_source(
     from sqlalchemy import delete
     from app.models.transaction import CanonicalRecord, RawRecord, ValidationResult
     from app.models.ingestion import IngestionJob
+    from app.models.reconciliation import (
+        MatchCandidate,
+        ReconciledMatch,
+        ReconciledMatchItem,
+        UnmatchedRecord,
+    )
 
     result = await db.execute(
         select(SourceSystem).where(SourceSystem.id == source_id)
@@ -320,11 +326,40 @@ async def delete_source(
             detail="Source system not found",
         )
 
-    # Delete related records in order (respecting foreign keys)
-    # 1. Delete canonical records
+    # Get canonical record IDs for this source (needed for reconciliation cleanup)
+    canonical_ids_result = await db.execute(
+        select(CanonicalRecord.id).where(CanonicalRecord.source_system_id == source_id)
+    )
+    canonical_ids = [r[0] for r in canonical_ids_result.fetchall()]
+
+    if canonical_ids:
+        # Delete reconciliation-related records that reference these canonical records
+        # 1. Delete match candidates
+        await db.execute(
+            delete(MatchCandidate).where(
+                (MatchCandidate.left_record_id.in_(canonical_ids)) |
+                (MatchCandidate.right_record_id.in_(canonical_ids))
+            )
+        )
+
+        # 2. Delete reconciled match items
+        await db.execute(
+            delete(ReconciledMatchItem).where(
+                ReconciledMatchItem.canonical_record_id.in_(canonical_ids)
+            )
+        )
+
+        # 3. Delete unmatched records
+        await db.execute(
+            delete(UnmatchedRecord).where(
+                UnmatchedRecord.canonical_record_id.in_(canonical_ids)
+            )
+        )
+
+    # 4. Delete canonical records
     await db.execute(delete(CanonicalRecord).where(CanonicalRecord.source_system_id == source_id))
 
-    # 2. Delete raw records and their validation results
+    # 5. Delete raw records and their validation results
     raw_record_ids = await db.execute(
         select(RawRecord.id).where(RawRecord.source_system_id == source_id)
     )
@@ -333,12 +368,12 @@ async def delete_source(
         await db.execute(delete(ValidationResult).where(ValidationResult.raw_record_id.in_(raw_ids)))
         await db.execute(delete(RawRecord).where(RawRecord.source_system_id == source_id))
 
-    # 3. Delete ingestion jobs
+    # 6. Delete ingestion jobs
     await db.execute(delete(IngestionJob).where(IngestionJob.source_system_id == source_id))
 
-    # 4. Delete schema mappings
+    # 7. Delete schema mappings
     await db.execute(delete(SourceSchemaMapping).where(SourceSchemaMapping.source_system_id == source_id))
 
-    # 5. Finally delete the source
+    # 8. Finally delete the source
     await db.delete(source)
     await db.flush()
