@@ -231,6 +231,16 @@ class IngestionService:
                 if validation.is_valid:
                     rows_valid += 1
 
+                    # Prepare JSON-safe payload (convert dates and decimals to strings)
+                    json_payload = {}
+                    for key, value in validation.normalized_data.items():
+                        if hasattr(value, 'isoformat'):  # date/datetime
+                            json_payload[key] = value.isoformat()
+                        elif hasattr(value, '__str__') and type(value).__name__ == 'Decimal':
+                            json_payload[key] = str(value)
+                        else:
+                            json_payload[key] = value
+
                     # Create canonical record
                     canonical = CanonicalRecord(
                         raw_record_id=raw_record.id,
@@ -247,7 +257,7 @@ class IngestionService:
                         description=validation.normalized_data.get("description"),
                         counterparty=validation.normalized_data.get("counterparty"),
                         record_hash=row_hash,
-                        normalized_payload=validation.normalized_data,
+                        normalized_payload=json_payload,
                     )
                     self.db.add(canonical)
                 else:

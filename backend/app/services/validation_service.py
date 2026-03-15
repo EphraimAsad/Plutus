@@ -149,6 +149,7 @@ class RecordValidator:
                             )
                         )
                     else:
+                        # Store as date object for database column
                         normalized[date_field] = parsed
 
                         # Validate date is reasonable
