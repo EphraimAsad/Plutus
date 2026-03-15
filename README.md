@@ -1,5 +1,6 @@
 # Plutus
 
+[![CI](https://github.com/yourusername/plutus/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/plutus/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![React 18](https://img.shields.io/badge/react-18-61dafb.svg)](https://reactjs.org/)
@@ -197,6 +198,20 @@ docker-compose up -d
 docker-compose exec backend alembic upgrade head
 docker-compose exec backend python -m scripts.seed_demo_data
 ```
+
+### CI/CD
+
+The project includes GitHub Actions workflows for continuous integration:
+
+**Workflow:** `.github/workflows/ci.yml`
+
+| Job | Description |
+|-----|-------------|
+| **Backend CI** | Ruff linting, MyPy type checking, pytest with PostgreSQL/Redis |
+| **Frontend CI** | ESLint, TypeScript checking, Vitest tests, production build |
+| **Docker Build** | Validates all Dockerfiles build successfully |
+
+**Triggers:** Push to `main`, pull requests, manual dispatch
 
 ---
 
