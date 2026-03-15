@@ -31,11 +31,11 @@ def run_reconciliation(self, run_id: str, left_source_id: str, right_source_id: 
 
     try:
         from app.services.reconciliation_service import ReconciliationService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def do_reconciliation():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = ReconciliationService(session)
                 result = await service.run_reconciliation(
                     run_id=uuid.UUID(run_id),
@@ -67,11 +67,11 @@ def run_duplicate_detection(self, run_id: str, source_id: str) -> dict:
 
     try:
         from app.services.reconciliation_service import ReconciliationService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def do_detection():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = ReconciliationService(session)
                 result = await service.run_reconciliation_single_source(
                     run_id=uuid.UUID(run_id),
@@ -98,11 +98,11 @@ def run_anomaly_detection(run_id: str | None = None) -> dict:
 
     try:
         from app.services.anomaly_service import AnomalyService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def run():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = AnomalyService(session)
                 result = await service.detect_anomalies(run_id)
                 await session.commit()
@@ -123,11 +123,11 @@ def generate_match_candidates(run_id: str, batch_size: int = 1000) -> dict:
 
     try:
         from app.services.matching_service import MatchingService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def run():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = MatchingService(session)
                 result = await service.generate_candidates(run_id, batch_size)
                 await session.commit()

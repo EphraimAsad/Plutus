@@ -1,6 +1,7 @@
 """Database configuration and session management."""
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends
@@ -26,6 +27,40 @@ async_session_maker = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+
+@asynccontextmanager
+async def get_worker_session() -> AsyncGenerator[AsyncSession, None]:
+    """Create a fresh database session for Celery workers.
+
+    This creates a new engine and session for each worker task to avoid
+    event loop conflicts when using asyncio.run() in Celery tasks.
+    """
+    # Create a fresh engine for this task
+    worker_engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=1,
+        max_overflow=0,
+    )
+
+    worker_session_maker = async_sessionmaker(
+        worker_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+    async with worker_session_maker() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+    # Dispose the engine to clean up connections
+    await worker_engine.dispose()
 
 
 class Base(DeclarativeBase):

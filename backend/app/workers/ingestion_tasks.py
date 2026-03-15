@@ -28,11 +28,11 @@ def process_ingestion_job(self, job_id: str) -> dict:
     try:
         # Import here to avoid circular imports
         from app.services.ingestion_service import IngestionService
-        from app.core.database import async_session_maker
+        from app.core.database import get_worker_session
         import asyncio
 
         async def run_ingestion():
-            async with async_session_maker() as session:
+            async with get_worker_session() as session:
                 service = IngestionService(session)
                 result = await service.process_job(job_id)
                 await session.commit()
