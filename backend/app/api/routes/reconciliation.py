@@ -24,7 +24,7 @@ from app.schemas.reconciliation import (
     UnmatchedRecordResponse,
     DuplicateDetectionCreate,
 )
-from app.api.deps import CurrentUser, AnalystUser
+from app.api.deps import CurrentUser, AnalystUser, AdminUser
 from app.models.source import SourceSystem
 from app.workers.reconciliation_tasks import run_reconciliation, run_duplicate_detection
 
@@ -445,3 +445,25 @@ async def get_candidate_records(
         "left_record": record_to_response(left_record) if left_record else None,
         "right_record": record_to_response(right_record) if right_record else None,
     }
+
+
+@router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_reconciliation_run(
+    run_id: uuid.UUID,
+    current_user: AdminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a reconciliation run and all related data (admin only)."""
+    result = await db.execute(
+        select(ReconciliationRun).where(ReconciliationRun.id == run_id)
+    )
+    run = result.scalar_one_or_none()
+
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reconciliation run not found",
+        )
+
+    await db.delete(run)
+    await db.flush()

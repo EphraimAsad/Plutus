@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.models.ingestion import IngestionJob, IngestionJobStatus, IngestionJobType
 from app.models.source import SourceSystem
 from app.schemas.ingestion import IngestionJobResponse, IngestionJobCreate
-from app.api.deps import CurrentUser, AnalystUser
+from app.api.deps import CurrentUser, AnalystUser, AdminUser
 from app.services.ingestion_service import IngestionService
 from app.workers.ingestion_tasks import process_ingestion_job
 
@@ -319,3 +319,23 @@ async def get_job_records(
         "total_records": job.rows_received,
         "records": records,
     }
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ingestion_job(
+    job_id: uuid.UUID,
+    current_user: AdminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete an ingestion job and all related records (admin only)."""
+    result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ingestion job not found",
+        )
+
+    await db.delete(job)
+    await db.flush()

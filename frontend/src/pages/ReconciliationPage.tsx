@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { reconciliationApi, sourcesApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDateTime, getStatusColor, formatNumber, formatPercentage } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Play, GitCompare, CheckCircle, XCircle, Clock, Search } from 'lucide-react'
+import { Play, GitCompare, CheckCircle, XCircle, Clock, Search, Trash2, Eye } from 'lucide-react'
 
 export function ReconciliationPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -20,6 +21,7 @@ export function ReconciliationPage() {
   const [amountTolerance, setAmountTolerance] = useState('1')
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const { data: sources } = useQuery({
     queryKey: ['sources'],
@@ -65,6 +67,21 @@ export function ReconciliationPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (runId: string) => reconciliationApi.deleteRun(runId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliation-runs'] })
+      toast({ title: 'Run deleted successfully' })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to delete run',
+        description: error.response?.data?.detail || 'An error occurred',
+        variant: 'destructive',
+      })
+    },
+  })
+
   const resetForm = () => {
     setShowCreateForm(false)
     setNewRunName('')
@@ -73,6 +90,12 @@ export function ReconciliationPage() {
     setSingleSourceId('')
     setDateTolerance('3')
     setAmountTolerance('1')
+  }
+
+  const handleDeleteRun = (run: any) => {
+    if (confirm(`Delete run "${run.name}"? This will also delete all related data.`)) {
+      deleteMutation.mutate(run.id)
+    }
   }
 
   const handleCreateRun = (e: React.FormEvent) => {
@@ -333,9 +356,15 @@ export function ReconciliationPage() {
                         {formatDateTime(run.created_at)}
                       </td>
                       <td className="py-3 px-4">
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/reconciliation/${run.id}`)}>
+                            <Eye className="mr-1 h-3 w-3" />
+                            Details
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteRun(run)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

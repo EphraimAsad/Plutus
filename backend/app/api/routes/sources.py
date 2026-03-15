@@ -296,3 +296,25 @@ async def activate_schema_mapping(
     await db.flush()
 
     return {"message": f"Schema mapping v{target_mapping.version} activated"}
+
+
+@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_source(
+    source_id: uuid.UUID,
+    current_user: AdminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a source system and all related data (admin only)."""
+    result = await db.execute(
+        select(SourceSystem).where(SourceSystem.id == source_id)
+    )
+    source = result.scalar_one_or_none()
+
+    if not source:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source system not found",
+        )
+
+    await db.delete(source)
+    await db.flush()

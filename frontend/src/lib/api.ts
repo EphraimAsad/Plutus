@@ -69,6 +69,9 @@ export const sourcesApi = {
     const response = await api.post(`/sources/${sourceId}/schema-mapping`, data)
     return response.data
   },
+  delete: async (id: string) => {
+    await api.delete(`/sources/${id}`)
+  },
 }
 
 // Ingestion API
@@ -88,6 +91,9 @@ export const ingestionApi = {
   getJob: async (jobId: string) => {
     const response = await api.get(`/ingestion/jobs/${jobId}`)
     return response.data
+  },
+  deleteJob: async (jobId: string) => {
+    await api.delete(`/ingestion/jobs/${jobId}`)
   },
 }
 
@@ -130,6 +136,9 @@ export const reconciliationApi = {
       params: { decision, resolution_note: note },
     })
     return response.data
+  },
+  deleteRun: async (runId: string) => {
+    await api.delete(`/reconciliation/runs/${runId}`)
   },
 }
 

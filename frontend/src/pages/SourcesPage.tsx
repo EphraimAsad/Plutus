@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Database, Settings, X } from 'lucide-react'
+import { Plus, Database, Settings, X, Trash2 } from 'lucide-react'
 
 export function SourcesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -15,11 +15,11 @@ export function SourcesPage() {
   const [selectedSource, setSelectedSource] = useState<any>(null)
   const [showMappingForm, setShowMappingForm] = useState(false)
   const [mapping, setMapping] = useState({
-    transaction_id: '',
+    external_record_id: '',
     amount: '',
-    transaction_date: '',
+    record_date: '',
     description: '',
-    reference: '',
+    reference_code: '',
   })
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -61,12 +61,27 @@ export function SourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['sources'] })
       setShowMappingForm(false)
       setSelectedSource(null)
-      setMapping({ transaction_id: '', amount: '', transaction_date: '', description: '', reference: '' })
+      setMapping({ external_record_id: '', amount: '', record_date: '', description: '', reference_code: '' })
       toast({ title: 'Schema mapping saved successfully' })
     },
     onError: (error: any) => {
       toast({
         title: 'Failed to save schema mapping',
+        description: error.response?.data?.detail || 'An error occurred',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => sourcesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] })
+      toast({ title: 'Source deleted successfully' })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to delete source',
         description: error.response?.data?.detail || 'An error occurred',
         variant: 'destructive',
       })
@@ -87,6 +102,12 @@ export function SourcesPage() {
   const openMappingForm = (source: any) => {
     setSelectedSource(source)
     setShowMappingForm(true)
+  }
+
+  const handleDelete = (source: any) => {
+    if (confirm(`Delete source "${source.name}"? This will also delete all related data.`)) {
+      deleteMutation.mutate(source.id)
+    }
   }
 
   if (isLoading) {
@@ -178,12 +199,12 @@ export function SourcesPage() {
               </p>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="map_transaction_id">Transaction ID Column</Label>
+                  <Label htmlFor="map_external_record_id">Record ID Column *</Label>
                   <Input
-                    id="map_transaction_id"
-                    value={mapping.transaction_id}
-                    onChange={(e) => setMapping({ ...mapping, transaction_id: e.target.value })}
-                    placeholder="e.g., transaction_id"
+                    id="map_external_record_id"
+                    value={mapping.external_record_id}
+                    onChange={(e) => setMapping({ ...mapping, external_record_id: e.target.value })}
+                    placeholder="e.g., transaction_id, entry_id"
                     required
                   />
                 </div>
@@ -198,12 +219,12 @@ export function SourcesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="map_date">Date Column</Label>
+                  <Label htmlFor="map_record_date">Date Column *</Label>
                   <Input
-                    id="map_date"
-                    value={mapping.transaction_date}
-                    onChange={(e) => setMapping({ ...mapping, transaction_date: e.target.value })}
-                    placeholder="e.g., date"
+                    id="map_record_date"
+                    value={mapping.record_date}
+                    onChange={(e) => setMapping({ ...mapping, record_date: e.target.value })}
+                    placeholder="e.g., date, posting_date"
                     required
                   />
                 </div>
@@ -213,16 +234,16 @@ export function SourcesPage() {
                     id="map_description"
                     value={mapping.description}
                     onChange={(e) => setMapping({ ...mapping, description: e.target.value })}
-                    placeholder="e.g., description"
+                    placeholder="e.g., description, memo"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="map_reference">Reference Column</Label>
+                  <Label htmlFor="map_reference_code">Reference Column</Label>
                   <Input
-                    id="map_reference"
-                    value={mapping.reference}
-                    onChange={(e) => setMapping({ ...mapping, reference: e.target.value })}
-                    placeholder="e.g., reference"
+                    id="map_reference_code"
+                    value={mapping.reference_code}
+                    onChange={(e) => setMapping({ ...mapping, reference_code: e.target.value })}
+                    placeholder="e.g., reference, ref_number"
                   />
                 </div>
               </div>
@@ -273,6 +294,10 @@ export function SourcesPage() {
                 <Button size="sm" variant="outline" onClick={() => openMappingForm(source)}>
                   <Settings className="mr-1 h-3 w-3" />
                   Configure
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(source)}>
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Delete
                 </Button>
               </div>
             </CardContent>
