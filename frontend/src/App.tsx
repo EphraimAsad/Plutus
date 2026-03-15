@@ -6,6 +6,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { SourcesPage } from '@/pages/SourcesPage'
 import { IngestionPage } from '@/pages/IngestionPage'
 import { ReconciliationPage } from '@/pages/ReconciliationPage'
+import { ReconciliationDetailsPage } from '@/pages/ReconciliationDetailsPage'
 import { ExceptionsPage } from '@/pages/ExceptionsPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { AuditPage } from '@/pages/AuditPage'
@@ -46,6 +47,7 @@ function App() {
         <Route path="sources" element={<SourcesPage />} />
         <Route path="ingestion" element={<IngestionPage />} />
         <Route path="reconciliation" element={<ReconciliationPage />} />
+        <Route path="reconciliation/:runId" element={<ReconciliationDetailsPage />} />
         <Route path="exceptions" element={<ExceptionsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="audit" element={<AuditPage />} />

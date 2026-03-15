@@ -96,7 +96,17 @@ export function SourcesPage() {
   const handleSaveMapping = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedSource) return
-    mappingMutation.mutate({ sourceId: selectedSource.id, mapping })
+
+    // Reverse the mapping: backend expects {source_column: canonical_field}
+    // but form collects {canonical_field: source_column}
+    const reversedMapping: Record<string, string> = {}
+    for (const [canonicalField, sourceColumn] of Object.entries(mapping)) {
+      if (sourceColumn) {
+        reversedMapping[sourceColumn] = canonicalField
+      }
+    }
+
+    mappingMutation.mutate({ sourceId: selectedSource.id, mapping: reversedMapping })
   }
 
   const openMappingForm = (source: any) => {

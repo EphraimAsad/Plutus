@@ -69,6 +69,22 @@ class ReconciliationService:
         run.started_at = datetime.now(timezone.utc)
         await self.db.flush()
 
+        # Update matching config from run parameters
+        run_params = run.parameters_json or {}
+        if run_params.get("date_tolerance_days") is not None:
+            self.config.date_tolerance_days = int(run_params["date_tolerance_days"])
+        if run_params.get("amount_tolerance_percent") is not None:
+            # Frontend sends as percentage (e.g., 1 for 1%), convert to decimal
+            self.config.amount_tolerance_percent = float(run_params["amount_tolerance_percent"]) / 100.0
+
+        # Recreate matcher with updated config
+        self.matcher = MatchingService(self.config)
+
+        logger.info(
+            f"Reconciliation {run_id} config: date_tolerance={self.config.date_tolerance_days} days, "
+            f"amount_tolerance={self.config.amount_tolerance_percent * 100}%"
+        )
+
         try:
             # Get canonical records from both sources
             left_records = await self._get_records_for_source(left_source_id)
