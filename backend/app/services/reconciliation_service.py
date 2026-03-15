@@ -338,7 +338,9 @@ class ReconciliationService:
         """Create a confirmed reconciled match."""
         match = ReconciledMatch(
             reconciliation_run_id=run.id,
+            match_group_id=uuid.uuid4(),  # Generate unique group ID
             resolution_type=ResolutionType.ONE_TO_ONE,
+            confidence_score=score,
             resolved_at=datetime.now(timezone.utc),
         )
         self.db.add(match)
@@ -443,10 +445,11 @@ class ReconciliationService:
             if left_record and right_record:
                 match = ReconciledMatch(
                     reconciliation_run_id=candidate.reconciliation_run_id,
+                    match_group_id=uuid.uuid4(),
                     resolution_type=ResolutionType.ONE_TO_ONE,
+                    confidence_score=candidate.score,
                     resolved_by=resolved_by,
                     resolved_at=datetime.now(timezone.utc),
-                    resolution_note=note,
                 )
                 self.db.add(match)
                 await self.db.flush()
